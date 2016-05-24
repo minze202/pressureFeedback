@@ -1,7 +1,4 @@
 
-// These constants won't change.  They're used to give names
-// to the pins used:
-
 int sensorValue = 0;        
 
 void setup() {
@@ -11,7 +8,7 @@ void setup() {
 
 void loop() {
   // read the analog in value:
-  sensorValue = analogRead(2);
+  sensorValue = analogRead(5);
 
   // print the results to the serial monitor:
   Serial.print("sensor = ");
