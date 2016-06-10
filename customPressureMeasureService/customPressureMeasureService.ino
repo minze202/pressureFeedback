@@ -70,7 +70,10 @@ int32_t pressureServiceId;
 int32_t pressureReadableCharId;
 int32_t pressureStrengthWritableCharId;
 int32_t pressurePatternWritableCharId;
+int32_t pressureValueCharId;
 int32_t pressureFakeCharId;
+int sensorPin=A4;
+int sensorValue=0;
 
 String pattern;
 String strength;
@@ -155,6 +158,11 @@ void setup(void)
     error(F("Could not add writable pressure characteristic"));
   }
 
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID128=00-72-42-04-00-77-12-10-13-42-AB-BA-0F-A1-AF-E1,PROPERTIES=0x02,MIN_LEN=1, VALUE=0"), &pressureValueCharId);
+    if (! success) {
+    error(F("Could not add writable pressure characteristic"));
+  }
+
   /* Add the custom Pressure Service to the advertising data (needed for Nordic apps to detect the service) */
   //Serial.print(F("Adding Pressure Service UUID to the advertising payload: "));
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-03-02-12-13") );
@@ -170,7 +178,6 @@ void loop(void)
 {
   ble.println("AT+GATTCHAR=2");
   ble.readline();
-  
   if (strcmp(ble.buffer, "OK") == 0) {
     // no data
     return;
@@ -193,91 +200,64 @@ void loop(void)
     testPump();
   }
 
-  
-  notifyAboutNotifications(pattern, strength);
-  ble.sendCommandCheckOK( F("AT+GATTCHAR=2,0") );
-  ble.sendCommandCheckOK( F("AT+GATTCHAR=3,0") );
+  if (pattern != "0x00"){
+    notifyAboutNotifications(pattern, strength);
+  }
+
   delay(1000);
 
 }
 
 void notifyAboutNotifications(String pattern, String strength)
 {
-  int pump_strength =255;
-  /*
-  if (strength == "0x01"){
-    pump_strength = 120;
-  }
-  if (strength =="0x02"){
-    pump_strength = 170;
-  }
-  if (strength == "0x03"){
-    pump_strength = 255;
-  }*/
+  ble.sendCommandCheckOK( F("AT+GATTCHAR=1,1") );
   if (pattern == "0x01"){
-    analogWrite(BLUEFRUIT_PUMP_PIN, pump_strength);
-    delay(5000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
-    delay(3000);              
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);    
+    if(strength == "0x01"){
+      pumpAir(450);
+    }else if(strength == "0x02"){
+      pumpAir(1000);
+    }
+    releaseAir(120);
+     
   }
   if (pattern == "0x02"){
-    analogWrite(BLUEFRUIT_PUMP_PIN, pump_strength);
-    delay(5000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    delay(4000);      
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
-    delay(3000);              
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);    
-    delay(1000); 
+    if(strength == "0x01"){
+      pumpAir(450);
+    }else if(strength == "0x02"){
+      pumpAir(1000);
+    }
+    delay(4000);
+    releaseAir(120);
   }
   if (pattern == "0x03"){
-    analogWrite(BLUEFRUIT_PUMP_PIN, pump_strength);
-    delay(5000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
-    delay(700);              
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH); 
-    analogWrite(BLUEFRUIT_PUMP_PIN, pump_strength);
-    delay(1500);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
-    delay(3000);              
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH); 
+    if(strength == "0x01"){
+      pumpAir(450);
+      releaseAir(120);
+      pumpAir(450);
+    }else if(strength == "0x02"){
+      pumpAir(1000);
+      releaseAir(500);
+      pumpAir(1000);
+    }
+    releaseAir(120);
   }
   if (pattern == "0x04"){
-    analogWrite(BLUEFRUIT_PUMP_PIN, pump_strength);
-    delay(2500);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    delay(2000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, pump_strength);
-    delay(2500);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
-    delay(3000);              
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH); 
+    if(strength == "0x01"){
+      pumpAir(250);
+      delay(3000);
+      pumpAir(450);
+    }else if(strength == "0x02"){
+      pumpAir(500);
+      delay(3000);
+      pumpAir(1000);
+    }
+    releaseAir(120);
   }
   if (pattern == "0x05"){
-    analogWrite(BLUEFRUIT_PUMP_PIN, 150);
-    delay(1000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    analogWrite(BLUEFRUIT_VENTIL_PIN, 0);
-    delay(1000);
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 150);
-    delay(1000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    analogWrite(BLUEFRUIT_VENTIL_PIN, 0);
-    delay(1000);
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 150);
-    delay(1000);
-    analogWrite(BLUEFRUIT_PUMP_PIN, 0);
-    analogWrite(BLUEFRUIT_VENTIL_PIN, 0);
-    delay(1000);                                          
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH); 
   }
+  ble.sendCommandCheckOK( F("AT+GATTCHAR=1,0") );
+  ble.sendCommandCheckOK( F("AT+GATTCHAR=2,0") );
+  ble.sendCommandCheckOK( F("AT+GATTCHAR=3,0") );
   
 }
 
@@ -293,5 +273,23 @@ void testPump(){
     delay(1000);              
     digitalWrite(BLUEFRUIT_PUMP_PIN, LOW);    
     delay(1000); 
+}
+
+void pumpAir(int desiredPressure){
+  digitalWrite(BLUEFRUIT_PUMP_PIN, HIGH);
+  while(sensorValue<desiredPressure){
+    sensorValue=analogRead(sensorPin);
+    delay(10);
+  }
+  digitalWrite(BLUEFRUIT_PUMP_PIN, LOW);
+}
+
+void releaseAir(int desiredPressure){
+  digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
+  while(sensorValue>desiredPressure){
+    sensorValue=analogRead(sensorPin);
+    delay(10);
+  }
+  digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
 }
 

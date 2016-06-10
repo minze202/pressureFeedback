@@ -7,7 +7,7 @@ void setup() {
 
 void loop() {
   
-  int sensorValue = analogRead(A5);
+  int sensorValue = analogRead(A4);
 
   // print the results to the serial monitor:
   Serial.print("sensor = ");

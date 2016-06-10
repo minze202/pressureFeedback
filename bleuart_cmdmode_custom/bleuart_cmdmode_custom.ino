@@ -96,7 +96,6 @@ void setup(void)
 {
   pinMode(13, OUTPUT);
   digitalWrite(13, LOW);
-  while (!Serial);  // required for Flora & Micro
   delay(500);
 
   Serial.begin(115200);
@@ -158,22 +157,17 @@ void setup(void)
 void loop(void)
 {
   // Check for user input
-  char inputs[BUFSIZE+1];
+  // Send characters to Bluefruit
 
-  if ( getUserInput(inputs, BUFSIZE) )
-  {
-    // Send characters to Bluefruit
-    Serial.print("[Send] ");
-    Serial.println(inputs);
+  ble.print("AT+BLEUARTTX=");
+  int sensorValue = analogRead(A4);
+  ble.println(sensorValue);
 
-    ble.print("AT+BLEUARTTX=");
-    ble.println(inputs);
-
-    // check response stastus
-    if (! ble.waitForOK() ) {
-      Serial.println(F("Failed to send?"));
-    }
+  // check response stastus
+  if (! ble.waitForOK() ) {
+    Serial.println(F("Failed to send?"));
   }
+  
 
   // Check for incoming characters from Bluefruit
   ble.println("AT+BLEUARTRX");
