@@ -75,8 +75,8 @@ int32_t pressureFakeCharId;
 int sensorPin=A4;
 int sensorValue=0;
 
-String pattern;
-String strength;
+long int pattern;
+long int strength;
 /**************************************************************************/
 /*!
     @brief  Sets up the HW an the BLE module (this function is called
@@ -182,7 +182,8 @@ void loop(void)
     // no data
     return;
   }
-  pattern = ble.buffer;
+  String bufferString=ble.buffer;
+  pattern = strtol(bufferString.c_str(),NULL,0);
 
   ble.println("AT+GATTCHAR=3");
   ble.readline();
@@ -191,69 +192,28 @@ void loop(void)
     // no data
     return;
   }
-  strength = ble.buffer;
-  
-  if (pattern =="0x06") {
-    testVentil();
-  }
-  if (pattern== "0x07") {
-    testPump();
+  bufferString=ble.buffer;
+  strength = strtol(bufferString.c_str(),NULL,0)*10;
+  if (strength != 0){
+    ble.sendCommandCheckOK( F("AT+GATTCHAR=1,1") );
   }
 
-  if (pattern != "0x00"){
+  if (pattern != 0){
     notifyAboutNotifications(pattern, strength);
   }
-
-  delay(100);
+  delay(10);
 
 }
 
-void notifyAboutNotifications(String pattern, String strength)
+void notifyAboutNotifications(long int pattern, long int strength)
 {
-  ble.sendCommandCheckOK( F("AT+GATTCHAR=1,1") );
-  if (pattern == "0x01"){
-    if(strength == "0x01"){
-      pumpAir(450);
-    }else if(strength == "0x02"){
-      pumpAir(1000);
-    }
-    releaseAir(120);
-     
-  }
-  if (pattern == "0x02"){
-    if(strength == "0x01"){
-      pumpAir(450);
-    }else if(strength == "0x02"){
-      pumpAir(1000);
-    }
-    delay(4000);
-    releaseAir(100);
-  }
-  if (pattern == "0x03"){
-    if(strength == "0x01"){
-      pumpAir(450);
-      releaseAir(100);
-      pumpAir(450);
-    }else if(strength == "0x02"){
-      pumpAir(1000);
-      releaseAir(500);
-      pumpAir(1000);
-    }
-    releaseAir(120);
-  }
-  if (pattern == "0x04"){
-    if(strength == "0x01"){
-      pumpAir(250);
-      delay(3000);
-      pumpAir(450);
-    }else if(strength == "0x02"){
-      pumpAir(500);
-      delay(3000);
-      pumpAir(1000);
-    }
-    releaseAir(100);
-  }
-  if (pattern == "0x05"){
+  ble.sendCommandCheckOK( F("AT+GATTCHAR=1,2") );
+  if(pattern==1){
+    pumpAir(strength);
+  }else if(pattern==2){
+    delay(strength*100);
+  }else if(pattern==3){
+    releaseAir(strength);
   }
   ble.sendCommandCheckOK( F("AT+GATTCHAR=1,0") );
   ble.sendCommandCheckOK( F("AT+GATTCHAR=2,0") );
@@ -261,19 +221,6 @@ void notifyAboutNotifications(String pattern, String strength)
   
 }
 
-void testVentil(){
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
-    delay(1000);              
-    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);    
-    delay(1000); 
-}
-
-void testPump(){
-    digitalWrite(BLUEFRUIT_PUMP_PIN, HIGH);
-    delay(1000);              
-    digitalWrite(BLUEFRUIT_PUMP_PIN, LOW);    
-    delay(1000); 
-}
 
 void pumpAir(int desiredPressure){
   digitalWrite(BLUEFRUIT_PUMP_PIN, HIGH);
