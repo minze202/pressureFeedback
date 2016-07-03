@@ -32,8 +32,8 @@
 
 #define BLUEFRUIT_HWSERIAL_NAME      Serial1
 
-#define BLUEFRUIT_VENTIL_PIN             9    // we won't be changing modes
-#define BLUEFRUIT_PUMP_PIN             11    // we won't be changing modes
+#define BLUEFRUIT_VENTIL_PIN             6    // we won't be changing modes
+#define BLUEFRUIT_PUMP_PIN             9    // we won't be changing modes
 #define BLUEFRUIT_UART_MODE_PIN        12    // we won't be changing modes
 #define BUFSIZE                        128   // Size of the read buffer for incoming data
 #define VERBOSE_MODE                   true  // If set to 'true' enables debug output
@@ -204,7 +204,7 @@ void loop(void)
     notifyAboutNotifications(pattern, strength);
   }
 
-  delay(1000);
+  delay(100);
 
 }
 
@@ -227,12 +227,12 @@ void notifyAboutNotifications(String pattern, String strength)
       pumpAir(1000);
     }
     delay(4000);
-    releaseAir(120);
+    releaseAir(100);
   }
   if (pattern == "0x03"){
     if(strength == "0x01"){
       pumpAir(450);
-      releaseAir(120);
+      releaseAir(100);
       pumpAir(450);
     }else if(strength == "0x02"){
       pumpAir(1000);
@@ -251,7 +251,7 @@ void notifyAboutNotifications(String pattern, String strength)
       delay(3000);
       pumpAir(1000);
     }
-    releaseAir(120);
+    releaseAir(100);
   }
   if (pattern == "0x05"){
   }
