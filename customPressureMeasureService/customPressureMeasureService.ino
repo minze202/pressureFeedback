@@ -194,14 +194,14 @@ void loop(void)
   }
   bufferString=ble.buffer;
   strength = strtol(bufferString.c_str(),NULL,0)*10;
-  if (strength != 0){
-    ble.sendCommandCheckOK( F("AT+GATTCHAR=1,1") );
+  if(strength!=0){
+    readyForCommand();
   }
 
   if (pattern != 0){
     notifyAboutNotifications(pattern, strength);
   }
-  delay(10);
+  delay(10000);
 
 }
 
@@ -218,6 +218,7 @@ void notifyAboutNotifications(long int pattern, long int strength)
   ble.sendCommandCheckOK( F("AT+GATTCHAR=1,0") );
   ble.sendCommandCheckOK( F("AT+GATTCHAR=2,0") );
   ble.sendCommandCheckOK( F("AT+GATTCHAR=3,0") );
+  readyForCommand();
   
 }
 
@@ -238,5 +239,15 @@ void releaseAir(int desiredPressure){
     delay(10);
   }
   digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
+}
+
+void readyForCommand(){
+    char readyChars[10]="ready";
+    ble.print("AT+BLEUARTTX=");
+    ble.println(readyChars);
+    
+    if (! ble.waitForOK() ) {
+      Serial.println(F("Failed to send?"));
+    }
 }
 
