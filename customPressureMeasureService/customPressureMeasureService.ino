@@ -32,8 +32,8 @@
 
 #define BLUEFRUIT_HWSERIAL_NAME      Serial1
 
-#define BLUEFRUIT_VENTIL_PIN             6    // we won't be changing modes
-#define BLUEFRUIT_PUMP_PIN             9    // we won't be changing modes
+#define BLUEFRUIT_VENTIL_PIN             9    // we won't be changing modes
+#define BLUEFRUIT_PUMP_PIN             6    // we won't be changing modes
 #define BLUEFRUIT_UART_MODE_PIN        12    // we won't be changing modes
 #define BUFSIZE                        128   // Size of the read buffer for incoming data
 #define VERBOSE_MODE                   true  // If set to 'true' enables debug output
@@ -87,8 +87,8 @@ void setup(void)
 {
   pinMode(BLUEFRUIT_PUMP_PIN, OUTPUT);
   pinMode(BLUEFRUIT_VENTIL_PIN, OUTPUT);
-  digitalWrite(BLUEFRUIT_PUMP_PIN, LOW);
-  digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
+  analogWrite(BLUEFRUIT_PUMP_PIN, 0);
+  digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
   //while (!Serial); // required for Flora & Micro
   delay(500);
 
@@ -195,18 +195,19 @@ void loop(void)
   bufferString=ble.buffer;
   strength = strtol(bufferString.c_str(),NULL,0)*10;
   if(strength!=0){
-    readyForCommand();
+    ble.sendCommandCheckOK( F("AT+GATTCHAR=1,1") );
   }
 
   if (pattern != 0){
     notifyAboutNotifications(pattern, strength);
   }
-  delay(10000);
+  delay(10);
 
 }
 
 void notifyAboutNotifications(long int pattern, long int strength)
 {
+  digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
   ble.sendCommandCheckOK( F("AT+GATTCHAR=1,2") );
   if(pattern==1){
     pumpAir(strength);
@@ -215,21 +216,73 @@ void notifyAboutNotifications(long int pattern, long int strength)
   }else if(pattern==3){
     releaseAir(strength);
   }
+  else if(pattern==4){
+    releaseWhilePumping(strength);
+  }
+  else if(pattern==6){
+    sinusPumping;
+  }
   ble.sendCommandCheckOK( F("AT+GATTCHAR=1,0") );
   ble.sendCommandCheckOK( F("AT+GATTCHAR=2,0") );
   ble.sendCommandCheckOK( F("AT+GATTCHAR=3,0") );
-  readyForCommand();
   
 }
 
 
 void pumpAir(int desiredPressure){
-  digitalWrite(BLUEFRUIT_PUMP_PIN, HIGH);
-  while(sensorValue<desiredPressure){
+  analogWrite(BLUEFRUIT_PUMP_PIN, 127);
+  int limit=0;
+  while(sensorValue<desiredPressure && limit<30000){
+    limit+=10;
     sensorValue=analogRead(sensorPin);
+    Serial.println( sensorValue );
     delay(10);
   }
-  digitalWrite(BLUEFRUIT_PUMP_PIN, LOW);
+  analogWrite(BLUEFRUIT_PUMP_PIN, 0);
+}
+
+void sinusPumping(){
+  analogWrite(BLUEFRUIT_PUMP_PIN, 127);
+  while(pattern!=7){
+
+    ble.println("AT+GATTCHAR=2");
+    ble.readline();
+    String bufferString=ble.buffer;
+    pattern = strtol(bufferString.c_str(),NULL,0);
+
+    sensorValue=analogRead(sensorPin);
+    if(sensorValue>=1000){
+      digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
+      while(sensorValue>=200 && pattern!=7){
+        ble.println("AT+GATTCHAR=2");
+        ble.readline();
+        bufferString=ble.buffer;
+        pattern = strtol(bufferString.c_str(),NULL,0);
+        sensorValue=analogRead(sensorPin);
+        delay(10);
+      }
+      digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
+    }
+    delay(10);
+  }
+  digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
+  analogWrite(BLUEFRUIT_PUMP_PIN, 0);
+}
+
+void releaseWhilePumping(int desiredPressure){
+  analogWrite(BLUEFRUIT_PUMP_PIN, 127);
+  digitalWrite(BLUEFRUIT_VENTIL_PIN, LOW);
+  int limit=0;
+  while(sensorValue>desiredPressure && limit<30000){
+    limit+=10;
+    sensorValue=analogRead(sensorPin);
+    Serial.println( sensorValue );
+    delay(10);
+  }
+  analogWrite(BLUEFRUIT_PUMP_PIN, 0);
+  if(sensorValue>110){
+    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
+  }
 }
 
 void releaseAir(int desiredPressure){
@@ -238,16 +291,9 @@ void releaseAir(int desiredPressure){
     sensorValue=analogRead(sensorPin);
     delay(10);
   }
-  digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
+  if(sensorValue>110){
+    digitalWrite(BLUEFRUIT_VENTIL_PIN, HIGH);
+  }
 }
 
-void readyForCommand(){
-    char readyChars[10]="ready";
-    ble.print("AT+BLEUARTTX=");
-    ble.println(readyChars);
-    
-    if (! ble.waitForOK() ) {
-      Serial.println(F("Failed to send?"));
-    }
-}
 
